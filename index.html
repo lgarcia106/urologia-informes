@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Informes de Urología</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>App de informes de urología</h1>
+  </header>
+
+  <main>
+    <!-- Mensajes generales de estado -->
+    <p id="estado-app">
+      La aplicación está funcionando correctamente.
+    </p>
+
+
+  <!-- Vista Configuración del médico -->
+  <section id="config-view" class="card">
+    <h2>Configuración del médico</h2>
+    <p>Estos datos se usarán en el encabezado y la firma de todos los informes.</p>
+
+    <div class="form-group">
+      <label for="medico-nombre">Nombre y apellido</label>
+      <input type="text" id="medico-nombre" placeholder="Dr. Nombre Apellido" />
+    </div>
+
+    <div class="form-group">
+      <label for="medico-especialidad">Especialidad / título</label>
+      <input type="text" id="medico-especialidad" placeholder="Urólogo / MN / MP" />
+    </div>
+
+    <div class="form-group">
+      <label for="medico-matricula">Matrícula</label>
+      <input type="text" id="medico-matricula" placeholder="M.N. / M.P." />
+    </div>
+
+    <div class="form-group">
+      <label for="medico-contacto">Datos de contacto (opcional)</label>
+      <input type="text" id="medico-contacto" placeholder="Teléfono, email, clínica..." />
+    </div>
+
+    <!-- Los inputs de logo/firma ya los agregamos aquí, los usaremos en la siguiente fase -->
+    <div class="form-group">
+      <label for="medico-logo">Logo (imagen, opcional)</label>
+      <input type="file" id="medico-logo" accept="image/*" />
+    </div>
+
+    <div class="form-group">
+      <label for="medico-firma">Firma digital (imagen, opcional)</label>
+      <input type="file" id="medico-firma" accept="image/*" />
+    </div>
+
+    <button id="btn-guardar-config">Guardar configuración</button>
+  </section>
+
+  <!-- Vista Nuevo informe -->
+  <section id="informe-view" class="card hidden">
+    <h2>Nuevo informe de cistoscopia</h2>
+
+    <div class="form-group">
+      <label for="paciente-nombre">Nombre del paciente</label>
+      <input type="text" id="paciente-nombre" placeholder="Nombre y apellido" />
+    </div>
+
+    <div class="form-group">
+      <label for="paciente-dni">DNI (opcional)</label>
+      <input type="text" id="paciente-dni" placeholder="DNI" />
+    </div>
+
+    <div class="form-group">
+      <label for="paciente-obra-social">Obra social</label>
+      <input type="text" id="paciente-obra-social" placeholder="OS / Plan" />
+    </div>
+
+    <div class="form-group">
+      <label for="medico-solicitante">Médico solicitante (opcional)</label>
+      <input type="text" id="medico-solicitante" placeholder="Nombre del médico que solicita el estudio" />
+    </div>
+
+    <div class="form-group">
+      <label for="estudio-fecha">Fecha del estudio</label>
+      <input type="date" id="estudio-fecha" />
+    </div>
+
+
+    <div class="form-group">
+      <span>Sexo del paciente</span>
+      <div class="inline-group">
+        <label><input type="radio" name="paciente-sexo" value="varon" checked /> Varón</label>
+        <label><input type="radio" name="paciente-sexo" value="mujer" /> Mujer</label>
+      </div>
+    </div>
+
+    <!-- Campo oculto sin etiqueta: uso interno para la transcripción -->
+    <textarea id="dictado-bruto" style="display:none;"></textarea>
+
+    <div class="button-row">
+      <button id="btn-generar-informe">
+        🎙️ Grabar informe (audio + IA)
+      </button>
+
+    </div>
+
+    <!-- Estado y visualizador mientras graba -->
+    <p id="estado-audio"></p>
+    <div id="audio-visualizer" class="audio-visualizer hidden">
+      <div class="audio-circle"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="informe-final">
+        Informe final (aquí se mostrará el texto procesado por IA, por ahora copiamos el dictado)
+      </label>
+      <textarea id="informe-final" rows="6" placeholder="Aquí aparecerá el informe listo para el PDF"></textarea>
+    </div>
+
+    <button id="btn-generar-pdf">
+      Generar PDF
+    </button>
+    <button id="btn-ir-config">
+        Editar configuración del médico
+      </button>
+  </section>
+
+  <!-- Contenedor para el contenido que luego se transformará en PDF -->
+  <section id="pdf-preview" class="card hidden">
+    <h2>Vista previa del informe (para PDF)</h2>
+    <div id="pdf-content">
+      <!-- Aquí armaremos el HTML del informe antes de generar el PDF -->
+    </div>
+  </section>
+</main>
+
+
+  <footer>
+    <small>Versión prototipo - sólo para uso personal</small>
+  </footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+
+
+</body>
+</html>
