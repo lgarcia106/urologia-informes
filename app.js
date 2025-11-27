@@ -193,7 +193,8 @@ async function toggleGrabacionAudio() {
 }
 
 function mostrarVista(idVista) {
-  const vistas = ["config-view", "informe-view", "pdf-preview"];
+  // Solo manejamos las vistas visibles de la app.
+  const vistas = ["config-view", "informe-view"];
   vistas.forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -203,6 +204,7 @@ function mostrarVista(idVista) {
       el.classList.add("hidden");
     }
   });
+  // #pdf-preview queda siempre fuera de pantalla y nunca se toca acá.
 }
 
 function cargarConfigDesdeStorage() {
@@ -412,60 +414,56 @@ function generarPdf() {
   const ok = construirContenidoPdf();
   if (!ok) return;
 
-  const pdfPreview = document.getElementById("pdf-preview");
-  if (pdfPreview) {
-    pdfPreview.classList.remove("hidden");
-  }
-
   const pacienteNombre =
     document.getElementById("paciente-nombre")?.value.trim() || "paciente";
 
   const element = document.getElementById("pdf-content");
   if (!element) return;
 
-  // Usamos directamente html2canvas y jsPDF del bundle
   const html2canvasFn = window.html2canvas;
-  // jsPDF en la versión UMD queda disponible como window.jspdf.jsPDF
   const JsPDF = (window.jspdf && window.jspdf.jsPDF);
 
   if (!html2canvasFn || !JsPDF) {
-    console.error("No se encontraron html2canvas o jsPDF en la ventana global.", {
-      html2canvas: !!html2canvasFn,
-      jsPDF: !!JsPDF,
-      windowKeys: Object.keys(window)
-    });
     alert("No se pudo generar el PDF (html2canvas/jsPDF no disponibles).");
     return;
   }
 
+  // 🔒 Guardamos estilos originales del contenido
+  const originalWidth = element.style.width;
+  const originalMaxWidth = element.style.maxWidth;
 
+  // 📏 Fijamos ancho A4 aproximado para evitar PDFs angostos en celu
+  element.style.width = "794px";
+  element.style.maxWidth = "794px";
 
-  // Hacemos una captura completa del contenido del PDF
-  html2canvasFn(element, { scale: 2.4 })
+  html2canvasFn(element, {
+    scale: 2.4,
+    width: 794,
+    windowWidth: 794,
+    scrollX: 0,
+    scrollY: -window.scrollY
+  })
     .then((canvas) => {
       const imgData = canvas.toDataURL("image/jpeg", 0.98);
-
-      // Creamos PDF A4 vertical
       const pdf = new JsPDF("p", "mm", "a4");
+
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Dejamos un margen alrededor (en mm)
       const marginX = 8;
       const marginY = 4;
-      const availableWidth = pageWidth - marginX * 2;
+
+      const availableWidth  = pageWidth  - marginX * 2;
       const availableHeight = pageHeight - marginY * 2;
 
-      // Calculamos escala para que TODO el canvas entre en la hoja
       const ratio = Math.min(
         availableWidth / canvas.width,
         availableHeight / canvas.height
       );
 
-      const imgWidth = canvas.width * ratio;
+      const imgWidth  = canvas.width  * ratio;
       const imgHeight = canvas.height * ratio;
 
-      // Posicionamos en (marginX, marginY) para que el encabezado quede cerca del borde
       pdf.addImage(
         imgData,
         "JPEG",
@@ -475,13 +473,16 @@ function generarPdf() {
         imgHeight
       );
 
-      pdf.save(
-        `informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`
-      );
+      pdf.save(`informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`);
     })
     .catch((err) => {
-      console.error("Error generando el PDF:", err);
+      console.error("Error generando PDF:", err);
       alert("Ocurrió un error al generar el PDF.");
+    })
+    .finally(() => {
+      // 🔙 Restauramos tamaño del contenido
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
     });
 }
 
@@ -559,6 +560,7 @@ Conclusión:
 - En estudios sin hallazgos relevantes, usá una frase breve del tipo: “Conclusión: Cistoscopia sin hallazgos patológicos significativos.”
 - Cuando el dictado describa entidades como hiperplasia prostática benigna obstructiva u otros diagnósticos, resúmilos en la conclusión con términos técnicos.
 - No agregues frases administrativas ni firmas.
+
 `.trim();
 
     const usuario = `
@@ -697,4 +699,3 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-
