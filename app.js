@@ -520,7 +520,7 @@ Tu tarea es transformar el dictado libre del médico en un informe semi-estructu
 Reglas generales:
 - Devolvé SOLO el cuerpo del informe, sin encabezado ni datos de paciente.
 - Redactá siempre en tercera persona, en tiempo presente, con lenguaje técnico urológico.
-- Longitud máxima aproximada: 150 palabras. Si el dictado es muy extenso, sintetizá manteniendo lo clínicamente relevante.
+- Longitud máxima aproximada: 200 palabras. Si el dictado es muy extenso, sintetizá manteniendo lo clínicamente relevante.
 
 Formato de salida para paciente varón (en este orden, cada ítem en una línea separada):
 Uretra: ...
@@ -697,3 +697,4 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
