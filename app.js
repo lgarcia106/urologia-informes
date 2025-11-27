@@ -402,34 +402,45 @@ function generarPdf() {
   const boxX = marginX;
   const boxWidth = pageWidth - marginX * 2;
 
-  const datosPacienteLineas = [];
-  datosPacienteLineas.push(`Paciente: ${pacienteNombre}`);
-  if (pacienteDni) datosPacienteLineas.push(`DNI: ${pacienteDni}`);
-  if (pacienteOs)  datosPacienteLineas.push(`Obra social: ${pacienteOs}`);
-  if (medicoSolicitante) datosPacienteLineas.push(`Médico solicitante: ${medicoSolicitante}`);
-  if (fechaEstudio) datosPacienteLineas.push(`Fecha del estudio: ${fechaEstudio}`);
+  // calculamos cuántas líneas habrá (Paciente siempre)
+  let numLineasPaciente = 1;
+  if (pacienteDni)          numLineasPaciente++;
+  if (pacienteOs)           numLineasPaciente++;
+  if (medicoSolicitante)    numLineasPaciente++;
+  if (fechaEstudio)         numLineasPaciente++;
 
   pdf.setFontSize(12);
   pdf.setDrawColor(226, 232, 240); // borde gris suave
   pdf.setLineWidth(0.3);
 
   const tituloPacienteAltura = 7;
-  const textoPacienteAltura  = datosPacienteLineas.length * lineHeight;
-  const boxPacienteHeight    = tituloPacienteAltura + textoPacienteAltura + 6;
+  const textoPacienteAltura  = numLineasPaciente * lineHeight;
+  const boxPacienteHeight    = tituloPacienteAltura + textoPacienteAltura + 8; // un poco más de padding
 
   pdf.roundedRect(boxX, currentY, boxWidth, boxPacienteHeight, 2, 2);
 
-  pdf.setFont(undefined, "bold");
+  // Título "Datos del paciente" con MÁS ESPACIO
+  pdf.setFont("helvetica", "bold");
   pdf.text("Datos del paciente", boxX + 4, currentY + 5);
 
-  pdf.setFont(undefined, "normal");
-  let textY = currentY + tituloPacienteAltura + 2;
-  datosPacienteLineas.forEach((linea) => {
-    pdf.text(linea, boxX + 4, textY);
-    textY += lineHeight;
-  });
+  // texto dentro de la caja (etiqueta en negrita, valor normal)
+  let textY = currentY + tituloPacienteAltura + 4; // más espacio bajo el título
 
-  currentY += boxPacienteHeight + 8; // espacio debajo de la caja
+  const escribirLineaDato = (label, value) => {
+    pdf.setFont("helvetica", "bold");
+    pdf.text(label, boxX + 4, textY);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(value, boxX + 42, textY); // misma línea, algo más a la derecha
+    textY += lineHeight;
+  };
+
+  escribirLineaDato("Paciente:", pacienteNombre);
+  if (pacienteDni)       escribirLineaDato("DNI:", pacienteDni);
+  if (pacienteOs)        escribirLineaDato("Obra social:", pacienteOs);
+  if (medicoSolicitante) escribirLineaDato("Médico solicitante:", medicoSolicitante);
+  if (fechaEstudio)      escribirLineaDato("Fecha del estudio:", fechaEstudio);
+
+  currentY += boxPacienteHeight + 10; // más espacio debajo de la caja
 
   // =========================
   // 3) Caja "Informe de cistoscopia"
@@ -437,29 +448,29 @@ function generarPdf() {
   pdf.setDrawColor(226, 232, 240);
   pdf.setLineWidth(0.3);
 
-  const maxBoxBottom = pageHeight - 40; // dejamos espacio para firma
+  // Dejamos un margen grande abajo para firma + aire
+  const maxBoxBottom = pageHeight - 55;
   const disponibleVertical = maxBoxBottom - currentY;
   const boxInformeHeight = Math.max(disponibleVertical, 60);
 
   pdf.roundedRect(boxX, currentY, boxWidth, boxInformeHeight, 2, 2);
 
+  // Título con más espaciado posterior
+  pdf.setFont("helvetica", "bold");
   pdf.setFontSize(12);
-  pdf.setFont(undefined, "bold");
   pdf.text("Informe de cistoscopia", boxX + 4, currentY + 6);
 
   // Texto del informe
-  pdf.setFont(undefined, "normal");
+  pdf.setFont("helvetica", "normal");
   const informeX = boxX + 4;
-  let informeY = currentY + 12;
+  let informeY = currentY + 14; // más espacio bajo el título
 
-  // Respetamos saltos de línea del informe final
   const parrafos = informeFinal.split(/\r?\n/).filter(l => l.trim() !== "");
   parrafos.forEach((p) => {
     const lineas = pdf.splitTextToSize(p, boxWidth - 8);
     lineas.forEach((linea) => {
       if (informeY > currentY + boxInformeHeight - 8) {
-        // por si acaso se pasa (casos muy largos): no dibujamos más
-        return;
+        return; // no seguir dibujando si se acaba el cuadro
       }
       pdf.text(linea, informeX, informeY);
       informeY += lineHeight;
@@ -468,11 +479,10 @@ function generarPdf() {
   });
 
   // =========================
-  // 4) Firma a la derecha
+  // 4) Firma a la derecha (SIN tocar el recuadro)
   // =========================
-  const firmaY = pageHeight - 25;
+  const firmaY = pageHeight - 22;   // un poco más arriba del borde inferior
 
-  // línea de firma
   const firmaLineaAncho = 60;
   const firmaLineaX2 = pageWidth - marginX;
   const firmaLineaX1 = firmaLineaX2 - firmaLineaAncho;
@@ -481,9 +491,31 @@ function generarPdf() {
   pdf.setLineWidth(0.4);
   pdf.line(firmaLineaX1, firmaY, firmaLineaX2, firmaY);
 
-  // texto de la firma
-  pdf.setFontSize(11);
-  pdf.setFont(undefined, "normal");
+  // Imagen firma por encima de la línea, tamaño fijo (no se estira)
+  if (config.firmaBase64) {
+    let firmaType = "PNG";
+    if (config.firmaBase64.startsWith("data:image/jpeg") ||
+        config.firmaBase64.startsWith("data:image/jpg")) {
+      firmaType = "JPEG";
+    }
+    const firmaImgAncho = 45;
+    const firmaImgAlto  = 18;
+    const firmaImgX = firmaLineaX2 - firmaImgAncho;
+    const firmaImgY = firmaY - firmaImgAlto - 3;
+
+    pdf.addImage(
+      config.firmaBase64,
+      firmaType,
+      firmaImgX,
+      firmaImgY,
+      firmaImgAncho,
+      firmaImgAlto
+    );
+  }
+
+  // texto debajo de la línea de firma
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
 
   const firmaNombre = config.nombre || "";
   const firmaEspecialidad = config.especialidad || "";
@@ -500,28 +532,6 @@ function generarPdf() {
     firmaTextoY += lineHeight;
   });
 
-  // imagen de firma (si existe), por encima de la línea
-  if (config.firmaBase64) {
-    let firmaType = "PNG";
-    if (config.firmaBase64.startsWith("data:image/jpeg") ||
-        config.firmaBase64.startsWith("data:image/jpg")) {
-      firmaType = "JPEG";
-    }
-    const firmaImgAncho = 40;
-    const firmaImgAlto  = 15;
-    const firmaImgX = firmaLineaX2 - firmaImgAncho;
-    const firmaImgY = firmaY - firmaImgAlto - 3;
-
-    pdf.addImage(
-      config.firmaBase64,
-      firmaType,
-      firmaImgX,
-      firmaImgY,
-      firmaImgAncho,
-      firmaImgAlto
-    );
-  }
-
   // =========================
   // 5) Guardar PDF
   // =========================
@@ -529,7 +539,6 @@ function generarPdf() {
     `informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`;
   pdf.save(nombreArchivo);
 }
-
 
 // -------------------- INTEGRACIÓN IA (Worker OpenAI) --------------------
 
@@ -743,6 +752,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
 
 
