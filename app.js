@@ -307,13 +307,13 @@ function formatearInformeParaHtml(texto) {
   return partes.join("");
 }
 
-// Construir el HTML del PDF dentro de #pdf-content
+// Devuelve todos los datos necesarios para armar el PDF nativo con jsPDF
 function construirContenidoPdf() {
   const config = cargarConfigDesdeStorage();
   if (!config) {
     alert("No hay configuración del médico cargada. Configurala primero.");
     mostrarVista("config-view");
-    return false;
+    return null;
   }
 
   const pacienteNombre = document.getElementById("paciente-nombre")?.value.trim() || "";
@@ -325,184 +325,209 @@ function construirContenidoPdf() {
   );
 
   const informeFinal = document.getElementById("informe-final")?.value.trim() || "";
-  const informeHtml = formatearInformeParaHtml(informeFinal);
 
   if (!pacienteNombre) {
     alert("Completá al menos el nombre del paciente.");
-    return false;
+    return null;
   }
   if (!informeFinal) {
     alert("El informe final está vacío. Generá o escribí el informe antes de crear el PDF.");
-    return false;
+    return null;
   }
 
-  const pdfContent = document.getElementById("pdf-content");
-  if (!pdfContent) {
-    alert("No se encontró el contenedor de PDF.");
-    return false;
-  }
-
-  // Líneas opcionales según si hay dato o no
-  const dniLinea = pacienteDni
-    ? `<div><strong>DNI:</strong> ${pacienteDni}</div>`
-    : "";
-  const osLinea = pacienteOs
-    ? `<div><strong>Obra social:</strong> ${pacienteOs}</div>`
-    : "";
-  const medicoSolicitanteLinea = medicoSolicitante
-    ? `<div><strong>Médico solicitante:</strong> ${medicoSolicitante}</div>`
-    : "";
-  const fechaLinea = fechaEstudio
-    ? `<div><strong>Fecha del estudio:</strong> ${fechaEstudio}</div>`
-    : "";
-
-  const firmaImgHtml = config.firmaBase64
-    ? `<img src="${config.firmaBase64}" alt="Firma médica" />`
-    : "";
-
-  // 4 RECTÁNGULOS
-  pdfContent.innerHTML = `
-    <!-- RECTÁNGULO 1: Encabezado / membrete -->
-    <div class="pdf-header-banner">
-      ${
-        config.logoBase64
-          ? `<img src="${config.logoBase64}" alt="Encabezado" />`
-          : ""
-      }
-    </div>
-
-    <!-- RECTÁNGULO 2: Datos del paciente -->
-    <div class="pdf-section-box">
-      <h2 class="pdf-section-title">Datos del paciente</h2>
-      <div class="pdf-section-body">
-        <div><strong>Paciente:</strong> ${pacienteNombre}</div>
-        ${dniLinea}
-        ${osLinea}
-        ${medicoSolicitanteLinea}
-        ${fechaLinea}
-      </div>
-    </div>
-
-    <!-- RECTÁNGULO 3: Informe de cistoscopia -->
-    <div class="pdf-section-box informe">
-    <h2 class="pdf-section-title">Informe de cistoscopia</h2>
-    <div class="pdf-body-text">
-        ${informeHtml}
-    </div>
-    </div>
-
-
-    <!-- RECTÁNGULO 4: Firma alineada a la derecha -->
-    <div class="pdf-firma">
-      <div class="pdf-firma-inner">
-        ${firmaImgHtml}
-        <div class="pdf-firma-line"></div>
-        <div class="pdf-firma-text">
-          ${config.nombre || ""}<br/>
-          ${config.especialidad || ""}${
-            config.matricula ? " – Matrícula: " + config.matricula : ""
-          }
-        </div>
-      </div>
-    </div>
-  `;
-
-  return true;
+  return {
+    config,
+    pacienteNombre,
+    pacienteDni,
+    pacienteOs,
+    medicoSolicitante,
+    fechaEstudio,
+    informeFinal
+  };
 }
 
 function generarPdf() {
-  const ok = construirContenidoPdf();
-  if (!ok) return;
+  const datos = construirContenidoPdf();
+  if (!datos) return;
 
-  const pacienteNombre =
-    document.getElementById("paciente-nombre")?.value.trim() || "paciente";
+  const {
+    config,
+    pacienteNombre,
+    pacienteDni,
+    pacienteOs,
+    medicoSolicitante,
+    fechaEstudio,
+    informeFinal
+  } = datos;
 
-  const original = document.getElementById("pdf-content");
-  if (!original) {
-    alert("No se encontró el contenido del PDF.");
-    return;
-  }
-
-  const html2canvasFn = window.html2canvas;
   const JsPDF = window.jspdf && window.jspdf.jsPDF;
-
-  if (!html2canvasFn || !JsPDF) {
-    alert("No se pudo generar el PDF (html2canvas/jsPDF no disponibles).");
+  if (!JsPDF) {
+    alert("No se encontró jsPDF en la página.");
     return;
   }
 
-  // 🧊 Creamos un lienzo A4 oculto, independiente del layout responsive
-  const printContainer = document.createElement("div");
-  printContainer.id = "pdf-print-root";
-  printContainer.style.position = "fixed";
-  printContainer.style.left = "-10000px"; // fuera de pantalla
-  printContainer.style.top = "0";
-  printContainer.style.width = "794px";   // ancho A4 a ~96 dpi
-  printContainer.style.maxWidth = "794px";
-  printContainer.style.padding = "24px";
-  printContainer.style.boxSizing = "border-box";
-  printContainer.style.backgroundColor = "#ffffff";
-  printContainer.style.fontFamily =
-    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  printContainer.style.fontSize = "12px";
+  const pdf = new JsPDF("p", "mm", "a4");
+  const pageWidth  = pdf.internal.pageSize.getWidth();   // ~210 mm
+  const pageHeight = pdf.internal.pageSize.getHeight();  // ~297 mm
 
-  // Copiamos el contenido ya construido en #pdf-content
-  printContainer.innerHTML = original.innerHTML;
+  const marginX = 15;
+  let currentY = 10;          // empezamos un poco debajo del borde superior
+  const lineHeight = 6;       // separación vertical estándar
 
-  // Lo agregamos temporalmente al body
-  document.body.appendChild(printContainer);
+  // =========================
+  // 1) Membrete / encabezado
+  // =========================
+  if (config.logoBase64) {
+    let imgType = "PNG";
+    if (config.logoBase64.startsWith("data:image/jpeg") ||
+        config.logoBase64.startsWith("data:image/jpg")) {
+      imgType = "JPEG";
+    }
 
-  html2canvasFn(printContainer, {
-    scale: 2.4,
-    width: 794,
-    windowWidth: 794,
-    scrollX: 0,
-    scrollY: 0
-  })
-    .then((canvas) => {
-      const imgData = canvas.toDataURL("image/jpeg", 0.98);
-      const pdf = new JsPDF("p", "mm", "a4");
+    const bannerHeight = 40; // alto en mm del membrete
+    pdf.addImage(
+      config.logoBase64,
+      imgType,
+      0,
+      currentY,
+      pageWidth,
+      bannerHeight
+    );
+    currentY += bannerHeight + 8;  // espacio debajo del banner
+  }
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+  // =========================
+  // 2) Caja "Datos del paciente"
+  // =========================
+  const boxX = marginX;
+  const boxWidth = pageWidth - marginX * 2;
 
-      const marginX = 8;
-      const marginY = 4;
+  const datosPacienteLineas = [];
+  datosPacienteLineas.push(`Paciente: ${pacienteNombre}`);
+  if (pacienteDni) datosPacienteLineas.push(`DNI: ${pacienteDni}`);
+  if (pacienteOs)  datosPacienteLineas.push(`Obra social: ${pacienteOs}`);
+  if (medicoSolicitante) datosPacienteLineas.push(`Médico solicitante: ${medicoSolicitante}`);
+  if (fechaEstudio) datosPacienteLineas.push(`Fecha del estudio: ${fechaEstudio}`);
 
-      const availableWidth = pageWidth - marginX * 2;
-      const availableHeight = pageHeight - marginY * 2;
+  pdf.setFontSize(12);
+  pdf.setDrawColor(226, 232, 240); // borde gris suave
+  pdf.setLineWidth(0.3);
 
-      const ratio = Math.min(
-        availableWidth / canvas.width,
-        availableHeight / canvas.height
-      );
+  const tituloPacienteAltura = 7;
+  const textoPacienteAltura  = datosPacienteLineas.length * lineHeight;
+  const boxPacienteHeight    = tituloPacienteAltura + textoPacienteAltura + 6;
 
-      const imgWidth = canvas.width * ratio;
-      const imgHeight = canvas.height * ratio;
+  pdf.roundedRect(boxX, currentY, boxWidth, boxPacienteHeight, 2, 2);
 
-      pdf.addImage(
-        imgData,
-        "JPEG",
-        marginX,
-        marginY,
-        imgWidth,
-        imgHeight
-      );
+  pdf.setFont(undefined, "bold");
+  pdf.text("Datos del paciente", boxX + 4, currentY + 5);
 
-      pdf.save(
-        `informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`
-      );
-    })
-    .catch((err) => {
-      console.error("Error generando PDF:", err);
-      alert("Ocurrió un error al generar el PDF.");
-    })
-    .finally(() => {
-      // 🧹 Eliminamos el lienzo oculto para no ensuciar el DOM
-      if (printContainer && printContainer.parentNode) {
-        printContainer.parentNode.removeChild(printContainer);
+  pdf.setFont(undefined, "normal");
+  let textY = currentY + tituloPacienteAltura + 2;
+  datosPacienteLineas.forEach((linea) => {
+    pdf.text(linea, boxX + 4, textY);
+    textY += lineHeight;
+  });
+
+  currentY += boxPacienteHeight + 8; // espacio debajo de la caja
+
+  // =========================
+  // 3) Caja "Informe de cistoscopia"
+  // =========================
+  pdf.setDrawColor(226, 232, 240);
+  pdf.setLineWidth(0.3);
+
+  const maxBoxBottom = pageHeight - 40; // dejamos espacio para firma
+  const disponibleVertical = maxBoxBottom - currentY;
+  const boxInformeHeight = Math.max(disponibleVertical, 60);
+
+  pdf.roundedRect(boxX, currentY, boxWidth, boxInformeHeight, 2, 2);
+
+  pdf.setFontSize(12);
+  pdf.setFont(undefined, "bold");
+  pdf.text("Informe de cistoscopia", boxX + 4, currentY + 6);
+
+  // Texto del informe
+  pdf.setFont(undefined, "normal");
+  const informeX = boxX + 4;
+  let informeY = currentY + 12;
+
+  // Respetamos saltos de línea del informe final
+  const parrafos = informeFinal.split(/\r?\n/).filter(l => l.trim() !== "");
+  parrafos.forEach((p) => {
+    const lineas = pdf.splitTextToSize(p, boxWidth - 8);
+    lineas.forEach((linea) => {
+      if (informeY > currentY + boxInformeHeight - 8) {
+        // por si acaso se pasa (casos muy largos): no dibujamos más
+        return;
       }
+      pdf.text(linea, informeX, informeY);
+      informeY += lineHeight;
     });
+    informeY += 2; // pequeño espacio entre párrafos
+  });
+
+  // =========================
+  // 4) Firma a la derecha
+  // =========================
+  const firmaY = pageHeight - 25;
+
+  // línea de firma
+  const firmaLineaAncho = 60;
+  const firmaLineaX2 = pageWidth - marginX;
+  const firmaLineaX1 = firmaLineaX2 - firmaLineaAncho;
+
+  pdf.setDrawColor(15, 23, 42); // gris oscuro
+  pdf.setLineWidth(0.4);
+  pdf.line(firmaLineaX1, firmaY, firmaLineaX2, firmaY);
+
+  // texto de la firma
+  pdf.setFontSize(11);
+  pdf.setFont(undefined, "normal");
+
+  const firmaNombre = config.nombre || "";
+  const firmaEspecialidad = config.especialidad || "";
+  const firmaMatricula = config.matricula ? `Matrícula: ${config.matricula}` : "";
+
+  const firmaTextoLineas = [
+    firmaNombre,
+    [firmaEspecialidad, firmaMatricula].filter(Boolean).join(" – ")
+  ].filter(Boolean);
+
+  let firmaTextoY = firmaY + 5;
+  firmaTextoLineas.forEach((linea) => {
+    pdf.text(linea, firmaLineaX2, firmaTextoY, { align: "right" });
+    firmaTextoY += lineHeight;
+  });
+
+  // imagen de firma (si existe), por encima de la línea
+  if (config.firmaBase64) {
+    let firmaType = "PNG";
+    if (config.firmaBase64.startsWith("data:image/jpeg") ||
+        config.firmaBase64.startsWith("data:image/jpg")) {
+      firmaType = "JPEG";
+    }
+    const firmaImgAncho = 40;
+    const firmaImgAlto  = 15;
+    const firmaImgX = firmaLineaX2 - firmaImgAncho;
+    const firmaImgY = firmaY - firmaImgAlto - 3;
+
+    pdf.addImage(
+      config.firmaBase64,
+      firmaType,
+      firmaImgX,
+      firmaImgY,
+      firmaImgAncho,
+      firmaImgAlto
+    );
+  }
+
+  // =========================
+  // 5) Guardar PDF
+  // =========================
+  const nombreArchivo =
+    `informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`;
+  pdf.save(nombreArchivo);
 }
 
 
@@ -718,6 +743,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
 
 
