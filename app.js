@@ -428,18 +428,20 @@ function generarPdf() {
     return;
   }
 
-  // 🔒 Guardamos estilos originales del contenido
+   // 🔒 Guardamos estilos originales del contenido
   const originalWidth = element.style.width;
   const originalMaxWidth = element.style.maxWidth;
 
-  // 📏 Fijamos ancho A4 aproximado para evitar PDFs angostos en celu
-  element.style.width = "794px";
-  element.style.maxWidth = "794px";
+  // 📏 Forzamos tamaño "virtual" A4 en píxeles para que sea igual en celu y en PC
+  const A4_WIDTH_PX = 794;   // ~210 mm a 96 dpi
+
+  element.style.width = A4_WIDTH_PX + "px";
+  element.style.maxWidth = A4_WIDTH_PX + "px";
 
   html2canvasFn(element, {
-    scale: 2.4,
-    width: 794,
-    windowWidth: 794,
+    scale: 2.0,           // 2x está bien de calidad y pesa menos que 2.4
+    width: A4_WIDTH_PX,
+    windowWidth: A4_WIDTH_PX,
     scrollX: 0,
     scrollY: -window.scrollY
   })
@@ -699,3 +701,4 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
