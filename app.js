@@ -417,8 +417,11 @@ function generarPdf() {
   const pacienteNombre =
     document.getElementById("paciente-nombre")?.value.trim() || "paciente";
 
-  const element = document.getElementById("pdf-content");
-  if (!element) return;
+  const original = document.getElementById("pdf-content");
+  if (!original) {
+    alert("No se encontró el contenido del PDF.");
+    return;
+  }
 
   const html2canvasFn = window.html2canvas;
   const JsPDF = window.jspdf && window.jspdf.jsPDF;
@@ -428,20 +431,33 @@ function generarPdf() {
     return;
   }
 
-  // 🔒 Guardamos estilos originales
-  const originalWidth = element.style.width;
-  const originalMaxWidth = element.style.maxWidth;
+  // 🧊 Creamos un lienzo A4 oculto, independiente del layout responsive
+  const printContainer = document.createElement("div");
+  printContainer.id = "pdf-print-root";
+  printContainer.style.position = "fixed";
+  printContainer.style.left = "-10000px"; // fuera de pantalla
+  printContainer.style.top = "0";
+  printContainer.style.width = "794px";   // ancho A4 a ~96 dpi
+  printContainer.style.maxWidth = "794px";
+  printContainer.style.padding = "24px";
+  printContainer.style.boxSizing = "border-box";
+  printContainer.style.backgroundColor = "#ffffff";
+  printContainer.style.fontFamily =
+    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  printContainer.style.fontSize = "12px";
 
-  // 📏 Fijamos ancho A4 (~794 px a 96 dpi) para que sea IGUAL en celu y PC
-  element.style.width = "794px";
-  element.style.maxWidth = "794px";
+  // Copiamos el contenido ya construido en #pdf-content
+  printContainer.innerHTML = original.innerHTML;
 
-  html2canvasFn(element, {
+  // Lo agregamos temporalmente al body
+  document.body.appendChild(printContainer);
+
+  html2canvasFn(printContainer, {
     scale: 2.4,
     width: 794,
     windowWidth: 794,
     scrollX: 0,
-    scrollY: -window.scrollY
+    scrollY: 0
   })
     .then((canvas) => {
       const imgData = canvas.toDataURL("image/jpeg", 0.98);
@@ -482,9 +498,10 @@ function generarPdf() {
       alert("Ocurrió un error al generar el PDF.");
     })
     .finally(() => {
-      // 🔙 Restauramos los estilos originales para que la web siga respondiendo bien
-      element.style.width = originalWidth;
-      element.style.maxWidth = originalMaxWidth;
+      // 🧹 Eliminamos el lienzo oculto para no ensuciar el DOM
+      if (printContainer && printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
+      }
     });
 }
 
@@ -701,6 +718,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
 
 
