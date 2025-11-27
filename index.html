@@ -12,10 +12,7 @@
   </header>
 
   <main>
-    <!-- Mensajes generales de estado -->
-    <p id="estado-app">
-      La aplicación está funcionando correctamente.
-    </p>
+    
 
 
   <!-- Vista Configuración del médico -->
@@ -59,7 +56,7 @@
 
   <!-- Vista Nuevo informe -->
   <section id="informe-view" class="card hidden">
-    <h2>Nuevo informe de cistoscopia</h2>
+    <h2>Cistoscopia - Nuevo informe</h2>
 
     <div class="form-group">
       <label for="paciente-nombre">Nombre del paciente</label>
@@ -113,7 +110,7 @@
 
     <div class="form-group">
       <label for="informe-final">
-        Informe final (aquí se mostrará el texto procesado por IA, por ahora copiamos el dictado)
+        Informe final
       </label>
       <textarea id="informe-final" rows="6" placeholder="Aquí aparecerá el informe listo para el PDF"></textarea>
     </div>
@@ -126,9 +123,11 @@
       </button>
   </section>
 
-  <!-- Contenedor para el contenido que luego se transformará en PDF -->
-  <section id="pdf-preview" class="card hidden">
-    <h2>Vista previa del informe (para PDF)</h2>
+  <!-- Contenedor para el contenido que luego se transformará en PDF (oculto fuera de pantalla) -->
+  <section
+    id="pdf-preview"
+    style="position: absolute; left: -10000px; top: 0; width: 794px;"
+  >
     <div id="pdf-content">
       <!-- Aquí armaremos el HTML del informe antes de generar el PDF -->
     </div>
