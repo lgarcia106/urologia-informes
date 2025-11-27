@@ -421,27 +421,25 @@ function generarPdf() {
   if (!element) return;
 
   const html2canvasFn = window.html2canvas;
-  const JsPDF = (window.jspdf && window.jspdf.jsPDF);
+  const JsPDF = window.jspdf && window.jspdf.jsPDF;
 
   if (!html2canvasFn || !JsPDF) {
     alert("No se pudo generar el PDF (html2canvas/jsPDF no disponibles).");
     return;
   }
 
-  // 🔒 Guardamos estilos originales del contenido
+  // 🔒 Guardamos estilos originales
   const originalWidth = element.style.width;
   const originalMaxWidth = element.style.maxWidth;
 
-  // 📏 Forzamos tamaño "virtual" A4 en píxeles para que sea igual en celu y en PC
-  const A4_WIDTH_PX = 794;   // ~210 mm a 96 dpi
-
-  element.style.width = A4_WIDTH_PX + "px";
-  element.style.maxWidth = A4_WIDTH_PX + "px";
+  // 📏 Fijamos ancho A4 (~794 px a 96 dpi) para que sea IGUAL en celu y PC
+  element.style.width = "794px";
+  element.style.maxWidth = "794px";
 
   html2canvasFn(element, {
-    scale: 2.0,           // 2x está bien de calidad y pesa menos que 2.4
-    width: A4_WIDTH_PX,
-    windowWidth: A4_WIDTH_PX,
+    scale: 2.4,
+    width: 794,
+    windowWidth: 794,
     scrollX: 0,
     scrollY: -window.scrollY
   })
@@ -455,7 +453,7 @@ function generarPdf() {
       const marginX = 8;
       const marginY = 4;
 
-      const availableWidth  = pageWidth  - marginX * 2;
+      const availableWidth = pageWidth - marginX * 2;
       const availableHeight = pageHeight - marginY * 2;
 
       const ratio = Math.min(
@@ -463,7 +461,7 @@ function generarPdf() {
         availableHeight / canvas.height
       );
 
-      const imgWidth  = canvas.width  * ratio;
+      const imgWidth = canvas.width * ratio;
       const imgHeight = canvas.height * ratio;
 
       pdf.addImage(
@@ -475,14 +473,16 @@ function generarPdf() {
         imgHeight
       );
 
-      pdf.save(`informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`);
+      pdf.save(
+        `informe-cistoscopia-${pacienteNombre.replace(/\s+/g, "_")}.pdf`
+      );
     })
     .catch((err) => {
       console.error("Error generando PDF:", err);
       alert("Ocurrió un error al generar el PDF.");
     })
     .finally(() => {
-      // 🔙 Restauramos tamaño del contenido
+      // 🔙 Restauramos los estilos originales para que la web siga respondiendo bien
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;
     });
@@ -701,5 +701,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
 
