@@ -428,7 +428,7 @@ function generarPdf() {
     return;
   }
 
-   // 🔒 Guardamos estilos originales del contenido
+  // 🔒 Guardamos estilos originales del contenido
   const originalWidth = element.style.width;
   const originalMaxWidth = element.style.maxWidth;
 
@@ -701,4 +701,5 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
